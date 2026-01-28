@@ -10,7 +10,7 @@ from sentence_transformers import SentenceTransformer
 
 
 # ---------------- CONFIG ----------------
-GEMINI_API_KEY = "AIzaSyALzyeBhUykd6odfnSq86geQkBHoWEvY9E"
+GEMINI_API_KEY = "PUT YOU API KEY HERE"
 client = genai.Client(api_key=GEMINI_API_KEY)
 MODEL_NAME = "gemini-2.0-flash-lite"
 
@@ -252,4 +252,5 @@ if result:
     st.write(result)
 
     pdf = create_pdf(result)
+
     st.download_button("⬇ Download as PDF", pdf, "Meeting-Decisions.pdf", mime="application/pdf")
