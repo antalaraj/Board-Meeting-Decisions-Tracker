@@ -54,6 +54,5 @@ Raj Antala
 🎓 PGDM Student in AI and Data Science  
 🏫 Adani Institute of Digital Technology Management (AIDTM)  
 📍 Gandhinagar, India  
-💡 Passionate about turning data into meaningful insights and building intelligent systems  
 📧 antalaraj214@gmail.com  
 🔗 www.linkedin.com/in/antalaraj
