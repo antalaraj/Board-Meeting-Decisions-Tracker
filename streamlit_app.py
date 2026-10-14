@@ -1,6 +1,5 @@
 import os
 import io
-import hashlib
 import streamlit as st
 from google import genai
 from reportlab.pdfgen import canvas
@@ -83,7 +82,7 @@ Analyze stored meeting records and extract approved decisions.
 User Query: {query}
 
 Relevant Stored Context:
-\"""{context}\""""
+{context}
 
 Return only bullet points and avoid hallucination.
 """
@@ -103,7 +102,7 @@ Rules:
 Query: {query}
 
 Minutes:
-\"""{minutes}\""""
+{minutes}
 """
 
 
