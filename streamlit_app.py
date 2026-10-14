@@ -1,11 +1,16 @@
 import os
 import io
+import logging
 import streamlit as st
 from google import genai
 from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import letter
 import chromadb
 from sentence_transformers import SentenceTransformer
+
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 
 # ---------------- PAGE CONFIG ----------------
@@ -27,6 +32,70 @@ if not GEMINI_API_KEY:
 
 client = genai.Client(api_key=GEMINI_API_KEY)
 MODEL_NAME = os.getenv("GEMINI_MODEL", "gemini-3.8-flash")
+# Try a stable alternative if the configured model is temporarily unavailable.
+FALLBACK_MODELS = ["gemini-3.5-flash", "gemini-3.1-flash-lite"]
+
+
+def generate_text(prompt):
+    """Call Gemini with a fallback model for transient/model-specific failures."""
+    models_to_try = list(dict.fromkeys([MODEL_NAME, *FALLBACK_MODELS]))
+    last_error = None
+
+    for model_name in models_to_try:
+        try:
+            response = client.models.generate_content(
+                model=model_name,
+                contents=prompt
+            )
+            text = (response.text or "").strip()
+            if not text:
+                st.warning("Gemini returned an empty response. Please try again.")
+            return text
+        except Exception as exc:
+            last_error = exc
+            status_code = (
+                getattr(exc, "code", None)
+                or getattr(exc, "status_code", None)
+            )
+            logger.warning(
+                "Gemini request failed for model %s (status=%s): %s",
+                model_name,
+                status_code,
+                type(exc).__name__,
+            )
+
+            # Authentication, permission, invalid-request, and quota errors
+            # are not usually fixed by switching models.
+            if status_code in (400, 401, 403, 429):
+                break
+
+    status_code = (
+        getattr(last_error, "code", None)
+        or getattr(last_error, "status_code", None)
+    )
+    logger.exception("All configured Gemini model attempts failed")
+    if status_code == 429:
+        st.error(
+            "Gemini API quota or rate limit reached. Check your API usage "
+            "and billing/quota settings, then try again."
+        )
+    elif status_code in (401, 403):
+        st.error(
+            "Gemini rejected the API key or access permissions. Check "
+            "GEMINI_API_KEY and the API project's access settings."
+        )
+    elif status_code == 400:
+        st.error(
+            "Gemini rejected the request. Check the prompt and model settings "
+            "in the Streamlit Cloud logs."
+        )
+    else:
+        st.error(
+            "Gemini is temporarily unavailable or the request failed for all "
+            "available models. Please retry shortly. If it continues, check "
+            "Manage app → Logs for the detailed error."
+        )
+    return ""
 
 
 # ---------------- CACHED MODELS ----------------
@@ -86,8 +155,7 @@ Relevant Stored Context:
 
 Return only bullet points and avoid hallucination.
 """
-    response = client.models.generate_content(model=MODEL_NAME, contents=prompt)
-    return (response.text or "").strip()
+    return generate_text(prompt)
 
 
 def build_prompt(minutes, query):
@@ -107,11 +175,7 @@ Minutes:
 
 
 def extract_using_prompt(minutes, query):
-    response = client.models.generate_content(
-        model=MODEL_NAME,
-        contents=build_prompt(minutes, query)
-    )
-    return (response.text or "").strip()
+    return generate_text(build_prompt(minutes, query))
 
 
 def create_pdf(text):
