@@ -173,17 +173,17 @@ CURRENT UPLOADED MEETING MINUTES (PRIMARY SOURCE — READ THIS FIRST):
 RETRIEVED KNOWLEDGE-BASE CONTEXT (SECONDARY ONLY; MAY BE OLDER OR UNRELATED):
 {retrieved_context}
 
-DECISION-EXTRACTION RULES:
-- Read the entire current uploaded minutes, including sections near the end and any section titled "Approved Decisions", "Decisions", "Resolutions", or similar.
+HOW TO ANSWER THE USER'S QUESTION:
+- First, identify exactly what the USER QUESTION asks for, then shape the response and headings to that request. The answer format must be driven by the user's question, not by a fixed "decisions" template.
+- If the user asks for a summary, provide a concise meeting summary. If they ask for action items, list tasks with owners and deadlines when stated. If they ask for risks, issues, attendees, dates, budgets, proposals, or a specific topic, focus on that information. If they ask for a comparison or a table, use that format when useful.
+- Only use an approved-decisions format when the user asks about decisions, approvals, resolutions, or a closely related topic.
+- For decision questions, read the entire current uploaded minutes, including sections near the end and any section titled "Approved Decisions", "Decisions", "Resolutions", or similar. Recognize approved, accepted, agreed, resolved, adopted, authorized, or confirmed decisions.
 - The current uploaded minutes always take priority over retrieved knowledge-base documents. Never use unrelated retrieved reports to contradict, replace, or override what the current minutes explicitly state.
-- Extract a decision when the current minutes clearly say it was approved, accepted, agreed, resolved, adopted, authorized, or confirmed. Equivalent wording is allowed.
-- Clearly assigned action items must be listed separately as "Assigned Action Items"; do not omit an item just because it is not phrased as a board-level approval.
-- Keep pending, deferred, rejected, or not-yet-approved proposals in a separate "Pending / Not Approved" section.
-- Do not infer approval for items explicitly described as pending, deferred, or not approved.
-- Do not say that no decisions exist merely because retrieved context contains no decisions. Check the full current uploaded minutes first.
-- For each item, include owner, deadline, effective date, amount, or conditions only when explicitly present in the current minutes.
-- Do not invent details. Use concise bullet points and preserve the meaning of the minutes.
-- If the current uploaded minutes explicitly list approved decisions, return them even if the retrieved context disagrees.
+- For decision questions, keep assigned action items separate from approved decisions, and keep pending, deferred, rejected, or not-yet-approved proposals clearly separate.
+- Do not infer approval for items explicitly described as pending, deferred, or not approved. Do not say that no decisions exist merely because retrieved context contains no decisions; check the full current uploaded minutes first.
+- Include owners, deadlines, effective dates, amounts, and conditions only when explicitly present in the source.
+- Use only information supported by the current uploaded minutes. Retrieved knowledge-base context is secondary and may be older or unrelated.
+- Do not invent details. Use clear headings and concise bullets unless the user requests a different format.
 """
     return generate_text(prompt)
 
@@ -198,19 +198,16 @@ USER QUESTION:
 MEETING MINUTES:
 {minutes}
 
-HOW TO EXTRACT DECISIONS:
-1. Extract confirmed decisions, not just sentences that sound important.
-2. A decision is confirmed when the minutes explicitly indicate that participants approved, agreed to, resolved, adopted, authorized, or confirmed something. Equivalent clear wording is acceptable.
-3. Include clearly agreed action items when the minutes assign or commit someone to do something. Include the owner and deadline only if stated.
-4. Do NOT label a proposal, recommendation, request, suggestion, option, discussion point, or future consideration as an approved decision unless the minutes also confirm acceptance or approval.
-5. Read the surrounding sentences for context. Approval may be expressed in a later sentence or in indirect but unambiguous wording.
-6. Do not require the exact word "approved"; recognize clear equivalents such as "the board agreed", "it was decided", "the committee resolved", or "the team confirmed".
-7. Do not invent names, dates, outcomes, votes, or approvals. Preserve important qualifications and conditions.
-8. If there are confirmed decisions, return them as concise bullet points. For each, include the decision, owner, deadline, and relevant condition when explicitly available.
-9. If there are no confirmed decisions, write exactly: "No explicitly approved decisions found in the provided meeting minutes."
-10. If the minutes contain proposals but no confirmed decisions, add a separate "Pending proposals / follow-ups" section with those items clearly marked as NOT approved. Do not confuse this section with decisions.
-
-Prefer accuracy over quantity. Do not return an empty result when the minutes contain a clearly agreed or confirmed decision.
+HOW TO ANSWER THE USER'S QUESTION:
+- First identify exactly what the USER QUESTION asks for. Format the response according to that question; do not always return a decision-extraction report.
+- Examples: for a summary, write a concise summary; for action items, list tasks with owners and deadlines when available; for risks or issues, list the risks and their supporting details; for attendees, list only names/roles present in the minutes; for a specific topic, focus on that topic; if a table or comparison is requested, provide one when supported by the source.
+- Use headings that match the requested task. Only use an approved-decisions format when the user asks about decisions, approvals, resolutions, or a closely related topic.
+- For decision-related questions, recognize clear wording such as approved, accepted, agreed, resolved, adopted, authorized, or confirmed; approval does not require the exact word "approved".
+- Keep proposals, recommendations, requests, and future considerations separate from approved decisions unless the minutes also confirm acceptance.
+- When the user asks for action items, include each clearly assigned or committed task and its owner/deadline only when stated.
+- If the user asks about decisions and none are confirmed in the minutes, say: "No explicitly approved decisions found in the provided meeting minutes." Do not use this message for unrelated questions.
+- Use only facts supported by the provided meeting minutes. Do not invent names, dates, outcomes, votes, approvals, or other details.
+- Be clear and concise, and follow any format explicitly requested by the user.
 """
 
 
@@ -360,7 +357,7 @@ if uploaded and query.strip():
 # ---------------- RESULT ----------------
 if result:
     st.success("✔ Successfully Processed!")
-    st.subheader("🧠 Extracted Decisions")
+    st.subheader("🧠 Response to Your Question")
     st.write(result)
 
     pdf = create_pdf(result)
