@@ -9,11 +9,23 @@ import chromadb
 from sentence_transformers import SentenceTransformer
 
 
+# ---------------- PAGE CONFIG ----------------
+st.set_page_config(page_title="AI Meeting Analyzer", layout="wide", page_icon="🧠")
+
+
 # ---------------- CONFIG ----------------
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY") or st.secrets.get("GEMINI_API_KEY", "")
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "").strip()
 if not GEMINI_API_KEY:
-    st.error("Gemini API key is not configured. Set GEMINI_API_KEY in your environment or Streamlit secrets.")
+    try:
+        GEMINI_API_KEY = st.secrets.get("GEMINI_API_KEY", "")
+    except Exception:
+        # A missing local secrets.toml should produce the friendly message below.
+        GEMINI_API_KEY = ""
+
+if not GEMINI_API_KEY:
+    st.error("Gemini API key is not configured. Add GEMINI_API_KEY in Streamlit Community Cloud secrets or set it in your environment.")
     st.stop()
+
 client = genai.Client(api_key=GEMINI_API_KEY)
 MODEL_NAME = os.getenv("GEMINI_MODEL", "gemini-3.8-flash")
 
@@ -22,6 +34,7 @@ MODEL_NAME = os.getenv("GEMINI_MODEL", "gemini-3.8-flash")
 @st.cache_resource
 def load_embedder():
     return SentenceTransformer("all-MiniLM-L6-v2")
+
 
 embed_model = load_embedder()
 
@@ -35,6 +48,7 @@ collection = chroma_client.get_or_create_collection(name="meeting_docs")
 def embed_text(text):
     return embed_model.encode(text).tolist()
 
+
 def store_in_rag(filename, text):
     stored = collection.get()
     files = [m.get("filename") for m in stored.get("metadatas", [])]
@@ -47,12 +61,14 @@ def store_in_rag(filename, text):
             metadatas=[{"filename": filename}]
         )
 
+
 @st.cache_data
 def cached_rag_query(query):
     result = collection.query(query_embeddings=[embed_text(query)], n_results=1)
     docs = result.get("documents", [["None"]])
 
-    if isinstance(docs[0], list): docs = docs[0]
+    if isinstance(docs[0], list):
+        docs = docs[0]
     text = "\n\n".join(docs)
 
     return text[:3000] + " ...(trimmed)" if len(text) > 3000 else text
@@ -60,19 +76,19 @@ def cached_rag_query(query):
 
 def extract_using_rag(query):
     context = cached_rag_query(query)
-    
+
     prompt = f"""
 Analyze stored meeting records and extract approved decisions.
 
 User Query: {query}
 
 Relevant Stored Context:
-\"\"\"{context}\"\"\"
+\"""{context}\""""
 
 Return only bullet points and avoid hallucination.
 """
     response = client.models.generate_content(model=MODEL_NAME, contents=prompt)
-    return response.text.strip()
+    return (response.text or "").strip()
 
 
 def build_prompt(minutes, query):
@@ -87,103 +103,95 @@ Rules:
 Query: {query}
 
 Minutes:
-\"\"\"{minutes}\"\"\"
+\"""{minutes}\""""
 """
+
 
 def extract_using_prompt(minutes, query):
     response = client.models.generate_content(
-        model=MODEL_NAME, 
+        model=MODEL_NAME,
         contents=build_prompt(minutes, query)
     )
-    return response.text.strip()
+    return (response.text or "").strip()
 
 
 def create_pdf(text):
     from datetime import datetime
-    
+
     buffer = io.BytesIO()
     pdf = canvas.Canvas(buffer, pagesize=letter)
     width, height = letter
-    
+
     # Header Section
     pdf.setFont("Helvetica-Bold", 20)
     pdf.drawString(40, height - 50, "Meeting Decisions Report")
-    
+
     pdf.setFont("Helvetica", 10)
     pdf.drawString(40, height - 70, f"Generated on: {datetime.now().strftime('%B %d, %Y at %I:%M %p')}")
-    
+
     # Horizontal line
     pdf.setLineWidth(1)
     pdf.line(40, height - 80, width - 40, height - 80)
-    
+
     # Content Section
     y_position = height - 110
     pdf.setFont("Helvetica", 11)
     line_height = 16
     margin = 40
-    max_width = width - 2 * margin
-    
+
     for line in text.split("\n"):
-        # Handle empty lines
         if not line.strip():
             y_position -= line_height / 2
             continue
-            
-        # Word wrap for long lines
+
         words = line.split()
         current_line = ""
-        
+
         for word in words:
             test_line = current_line + " " + word if current_line else word
-            
-            # Check if line is too long (approximate)
+
             if len(test_line) > 85:
                 if current_line:
-                    # Check if we need a new page
                     if y_position < 50:
                         pdf.showPage()
                         pdf.setFont("Helvetica", 11)
                         y_position = height - 50
-                    
+
                     pdf.drawString(margin, y_position, current_line)
                     y_position -= line_height
                     current_line = word
                 else:
-                    # Single word is too long, just print it
                     if y_position < 50:
                         pdf.showPage()
                         pdf.setFont("Helvetica", 11)
                         y_position = height - 50
-                    
+
                     pdf.drawString(margin, y_position, test_line)
                     y_position -= line_height
                     current_line = ""
             else:
                 current_line = test_line
-        
-        # Print remaining text in current_line
+
         if current_line:
             if y_position < 50:
                 pdf.showPage()
                 pdf.setFont("Helvetica", 11)
                 y_position = height - 50
-            
+
             pdf.drawString(margin, y_position, current_line)
             y_position -= line_height
-    
+
     # Footer
     pdf.setFont("Helvetica-Oblique", 8)
     pdf.drawString(margin, 30, "Generated by AI Meeting Decisions Extractor")
     pdf.drawRightString(width - margin, 30, f"Page {pdf.getPageNumber()}")
-    
+
     pdf.save()
     buffer.seek(0)
     return buffer.getvalue()
 
 
-
 # ---------------- UI DESIGN ----------------
-st.set_page_config(page_title="AI Meeting Analyzer", layout="wide", page_icon="🧠")
 
 # Custom CSS for square buttons
 st.markdown("""
@@ -226,23 +234,21 @@ if uploaded and query.strip():
     st.markdown("<br><b>⚙️ Choose AI Mode to Run:</b><br>", unsafe_allow_html=True)
 
     col1, col2 = st.columns(2)
-    
+
     with col1:
         if st.button("⚡ Prompt Mode (Fast)\n\nDirect AI Processing", use_container_width=True):
             mode = "Prompt Mode (Fast)"
-    
+
     with col2:
         if st.button("🔍 RAG Mode\n\nSearch Knowledge Base", use_container_width=True):
             mode = "RAG Mode (Search Knowledge Base)"
 
-    minutes_text = uploaded.read().decode("utf-8")
+    minutes_text = uploaded.getvalue().decode("utf-8")
 
-    # Auto-run when mode selected
     if mode:
         with st.spinner("⏳ Generating response..."):
             if mode == "Prompt Mode (Fast)":
                 result = extract_using_prompt(minutes_text, query)
-
             elif mode == "RAG Mode (Search Knowledge Base)":
                 store_in_rag(uploaded.name, minutes_text)
                 result = extract_using_rag(query)
