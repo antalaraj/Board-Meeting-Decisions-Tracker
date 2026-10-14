@@ -31,9 +31,10 @@ if not GEMINI_API_KEY:
     st.stop()
 
 client = genai.Client(api_key=GEMINI_API_KEY)
-MODEL_NAME = os.getenv("GEMINI_MODEL", "gemini-3.8-flash")
-# Try a stable alternative if the configured model is temporarily unavailable.
-FALLBACK_MODELS = ["gemini-2.5-flash", "gemini-2.5-flash-lite"]
+MODEL_NAME = os.getenv("GEMINI_MODEL", "gemini-3.5-flash-lite")
+# Prefer the current Flash-Lite model, then try other API model aliases if needed.
+# Gemini 2.5 models are intentionally omitted because access is restricted and shutdowns are imminent.
+FALLBACK_MODELS = ["gemini-flash-lite-latest", "gemini-3.8-flash"]
 
 
 def generate_text(prompt):
@@ -64,9 +65,24 @@ def generate_text(prompt):
                 type(exc).__name__,
             )
 
-            # Authentication, permission, invalid-request, and quota errors
-            # are not usually fixed by switching models.
-            if status_code in (400, 401, 403, 429):
+            # Authentication and quota errors won't be fixed by changing models.
+            # A 400 can also mean that this particular model ID is unavailable,
+            # so continue to the next model for model-specific errors.
+            error_message = str(exc).lower()
+            model_unavailable = any(
+                phrase in error_message
+                for phrase in (
+                    "model not found",
+                    "not found for api version",
+                    "is not supported",
+                    "unsupported model",
+                    "does not exist",
+                    "unknown model",
+                )
+            )
+            if status_code in (401, 403, 429):
+                break
+            if status_code == 400 and not model_unavailable:
                 break
 
     status_code = (
@@ -146,31 +162,49 @@ def extract_using_rag(query):
     context = cached_rag_query(query)
 
     prompt = f"""
-Analyze stored meeting records and extract approved decisions.
+You are a careful board-meeting secretary. Answer the user's question using ONLY the relevant stored meeting context below.
 
-User Query: {query}
+USER QUESTION:
+{query}
 
-Relevant Stored Context:
+MEETING CONTEXT:
 {context}
 
-Return only bullet points and avoid hallucination.
+DECISION-EXTRACTION RULES:
+- Identify a decision when the minutes clearly say it was approved, accepted, agreed, resolved, adopted, or confirmed. Equivalent wording is allowed.
+- Treat an action item as an approved decision only when the minutes show that the action was agreed or assigned, not merely suggested.
+- Keep proposals, recommendations, requests, open questions, and discussion points separate from confirmed decisions.
+- Do not infer approval from phrases such as "proposed", "recommended", "suggested", "should consider", or "will discuss".
+- For each confirmed decision, state the decision and include the responsible person/team, deadline, or conditions only when explicitly present.
+- If no confirmed decisions are present in the retrieved context, say: "No explicitly approved decisions found in the retrieved meeting context." Do not claim the full meeting had no decisions if the context may be incomplete.
+- Do not invent details. Be concise and use clear bullet points. If useful, add a separate "Pending proposals / follow-ups" section.
 """
     return generate_text(prompt)
 
 
 def build_prompt(minutes, query):
     return f"""
-Extract approved decisions from these meeting minutes.
+You are an accurate board-meeting secretary. Answer the user's question using ONLY the meeting minutes provided below.
 
-Rules:
-- Bullet points only
-- No hallucinated items
-- Skip discussions
+USER QUESTION:
+{query}
 
-Query: {query}
-
-Minutes:
+MEETING MINUTES:
 {minutes}
+
+HOW TO EXTRACT DECISIONS:
+1. Extract confirmed decisions, not just sentences that sound important.
+2. A decision is confirmed when the minutes explicitly indicate that participants approved, agreed to, resolved, adopted, authorized, or confirmed something. Equivalent clear wording is acceptable.
+3. Include clearly agreed action items when the minutes assign or commit someone to do something. Include the owner and deadline only if stated.
+4. Do NOT label a proposal, recommendation, request, suggestion, option, discussion point, or future consideration as an approved decision unless the minutes also confirm acceptance or approval.
+5. Read the surrounding sentences for context. Approval may be expressed in a later sentence or in indirect but unambiguous wording.
+6. Do not require the exact word "approved"; recognize clear equivalents such as "the board agreed", "it was decided", "the committee resolved", or "the team confirmed".
+7. Do not invent names, dates, outcomes, votes, or approvals. Preserve important qualifications and conditions.
+8. If there are confirmed decisions, return them as concise bullet points. For each, include the decision, owner, deadline, and relevant condition when explicitly available.
+9. If there are no confirmed decisions, write exactly: "No explicitly approved decisions found in the provided meeting minutes."
+10. If the minutes contain proposals but no confirmed decisions, add a separate "Pending proposals / follow-ups" section with those items clearly marked as NOT approved. Do not confuse this section with decisions.
+
+Prefer accuracy over quantity. Do not return an empty result when the minutes contain a clearly agreed or confirmed decision.
 """
 
 
