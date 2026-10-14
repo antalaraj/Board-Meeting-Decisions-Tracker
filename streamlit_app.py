@@ -32,9 +32,8 @@ if not GEMINI_API_KEY:
 
 client = genai.Client(api_key=GEMINI_API_KEY)
 MODEL_NAME = os.getenv("GEMINI_MODEL", "gemini-3.5-flash-lite")
-# Prefer the current Flash-Lite model, then try other API model aliases if needed.
-# Gemini 2.5 models are intentionally omitted because access is restricted and shutdowns are imminent.
-FALLBACK_MODELS = ["gemini-flash-lite-latest", "gemini-3.8-flash"]
+# Use documented stable Gemini API model IDs as fallbacks.
+FALLBACK_MODELS = ["gemini-3.1-flash-lite", "gemini-3.8-flash"]
 
 
 def generate_text(prompt):
