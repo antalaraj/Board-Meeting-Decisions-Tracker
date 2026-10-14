@@ -133,16 +133,15 @@ def embed_text(text):
 
 
 def store_in_rag(filename, text):
-    stored = collection.get()
-    files = [m.get("filename") for m in stored.get("metadatas", [])]
-
-    if filename not in files:
-        collection.add(
-            documents=[text],
-            ids=[filename],
-            embeddings=[embed_text(text)],
-            metadatas=[{"filename": filename}]
-        )
+    # Replace older content when the same filename is uploaded again.
+    collection.upsert(
+        documents=[text],
+        ids=[filename],
+        embeddings=[embed_text(text)],
+        metadatas=[{"filename": filename}]
+    )
+    # Avoid returning a cached retrieval result after the knowledge base changes.
+    cached_rag_query.clear()
 
 
 @st.cache_data
@@ -157,26 +156,34 @@ def cached_rag_query(query):
     return text[:3000] + " ...(trimmed)" if len(text) > 3000 else text
 
 
-def extract_using_rag(query):
-    context = cached_rag_query(query)
+def extract_using_rag(minutes, query):
+    # RAG results are supplementary. The file uploaded for this run is the
+    # source of truth, so relevant decisions cannot be hidden by older files.
+    retrieved_context = cached_rag_query(query)
 
     prompt = f"""
-You are a careful board-meeting secretary. Answer the user's question using ONLY the relevant stored meeting context below.
+You are a careful board-meeting secretary. Answer the user's question using the CURRENT UPLOADED MEETING MINUTES as the primary and authoritative source.
 
 USER QUESTION:
 {query}
 
-MEETING CONTEXT:
-{context}
+CURRENT UPLOADED MEETING MINUTES (PRIMARY SOURCE — READ THIS FIRST):
+{minutes}
+
+RETRIEVED KNOWLEDGE-BASE CONTEXT (SECONDARY ONLY; MAY BE OLDER OR UNRELATED):
+{retrieved_context}
 
 DECISION-EXTRACTION RULES:
-- Identify a decision when the minutes clearly say it was approved, accepted, agreed, resolved, adopted, or confirmed. Equivalent wording is allowed.
-- Treat an action item as an approved decision only when the minutes show that the action was agreed or assigned, not merely suggested.
-- Keep proposals, recommendations, requests, open questions, and discussion points separate from confirmed decisions.
-- Do not infer approval from phrases such as "proposed", "recommended", "suggested", "should consider", or "will discuss".
-- For each confirmed decision, state the decision and include the responsible person/team, deadline, or conditions only when explicitly present.
-- If no confirmed decisions are present in the retrieved context, say: "No explicitly approved decisions found in the retrieved meeting context." Do not claim the full meeting had no decisions if the context may be incomplete.
-- Do not invent details. Be concise and use clear bullet points. If useful, add a separate "Pending proposals / follow-ups" section.
+- Read the entire current uploaded minutes, including sections near the end and any section titled "Approved Decisions", "Decisions", "Resolutions", or similar.
+- The current uploaded minutes always take priority over retrieved knowledge-base documents. Never use unrelated retrieved reports to contradict, replace, or override what the current minutes explicitly state.
+- Extract a decision when the current minutes clearly say it was approved, accepted, agreed, resolved, adopted, authorized, or confirmed. Equivalent wording is allowed.
+- Clearly assigned action items must be listed separately as "Assigned Action Items"; do not omit an item just because it is not phrased as a board-level approval.
+- Keep pending, deferred, rejected, or not-yet-approved proposals in a separate "Pending / Not Approved" section.
+- Do not infer approval for items explicitly described as pending, deferred, or not approved.
+- Do not say that no decisions exist merely because retrieved context contains no decisions. Check the full current uploaded minutes first.
+- For each item, include owner, deadline, effective date, amount, or conditions only when explicitly present in the current minutes.
+- Do not invent details. Use concise bullet points and preserve the meaning of the minutes.
+- If the current uploaded minutes explicitly list approved decisions, return them even if the retrieved context disagrees.
 """
     return generate_text(prompt)
 
@@ -347,7 +354,7 @@ if uploaded and query.strip():
                 result = extract_using_prompt(minutes_text, query)
             elif mode == "RAG Mode (Search Knowledge Base)":
                 store_in_rag(uploaded.name, minutes_text)
-                result = extract_using_rag(query)
+                result = extract_using_rag(minutes_text, query)
 
 
 # ---------------- RESULT ----------------
