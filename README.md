@@ -1,15 +1,19 @@
 # Board Meeting Decisions Tracker (AI Meeting Analyzer)
 
-An AI-powered Streamlit application that analyzes board meeting minutes and extracts decisions, summaries, and insights. It uses Google Gemini AI and Retrieval-Augmented Generation (RAG) to answer questions based on uploaded meeting text.
+An AI-powered Streamlit application that analyzes board meeting minutes and answers questions about decisions, action items, meeting summaries, departmental challenges, and pending proposals. It uses Google Gemini AI and Retrieval-Augmented Generation (RAG) to answer questions grounded in the uploaded meeting text.
+
+**Live App:** [https://board-meeting-decisions-tracker.streamlit.app/](https://board-meeting-decisions-tracker.streamlit.app/)
 
 ## Features
 
 - Upload meeting minutes in `.txt` format
-- Ask questions about the uploaded meeting
-- Prompt mode for direct analysis
-- RAG mode backed by ChromaDB and sentence-transformer embeddings
-- Structured decision summaries
-- Download results as a PDF report
+- Ask natural-language questions about the uploaded meeting
+- Prompt mode for direct analysis of the current meeting minutes
+- RAG mode backed by ChromaDB and Sentence Transformers
+- Question-specific responses, including meeting summaries, action items with owners and deadlines, approved decisions, pending proposals, and departmental challenges
+- Uses the current uploaded minutes as the primary source in RAG mode, with retrieved knowledge-base context as secondary information
+- Updates an existing knowledge-base record when a file with the same filename is uploaded again
+- Download responses as a PDF report
 
 ## Tech Stack
 
@@ -88,6 +92,7 @@ Keep API keys out of GitHub and never commit a real `.streamlit/secrets.toml` fi
 - Gemini API access and internet connectivity are required.
 - RAG mode uses a local ChromaDB store; files stored on an ephemeral hosted filesystem may not persist across restarts or redeployments.
 - English-language meetings are the primary target.
+- AI responses should be checked against the original minutes, especially dates, owners, and whether a proposal was approved or remains pending.
 
 ## Future Enhancements
 
