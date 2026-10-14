@@ -33,7 +33,7 @@ if not GEMINI_API_KEY:
 client = genai.Client(api_key=GEMINI_API_KEY)
 MODEL_NAME = os.getenv("GEMINI_MODEL", "gemini-3.8-flash")
 # Try a stable alternative if the configured model is temporarily unavailable.
-FALLBACK_MODELS = ["gemini-3.5-flash", "gemini-3.1-flash-lite"]
+FALLBACK_MODELS = ["gemini-2.5-flash", "gemini-2.5-flash-lite"]
 
 
 def generate_text(prompt):
@@ -73,7 +73,7 @@ def generate_text(prompt):
         getattr(last_error, "code", None)
         or getattr(last_error, "status_code", None)
     )
-    logger.exception("All configured Gemini model attempts failed")
+    logger.error("All configured Gemini model attempts failed (status=%s, error_type=%s)", status_code, type(last_error).__name__ if last_error else "UnknownError")
     if status_code == 429:
         st.error(
             "Gemini API quota or rate limit reached. Check your API usage "
