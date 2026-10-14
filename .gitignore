@@ -1,0 +1,13 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Local secrets and environment files
+.env
+.streamlit/secrets.toml
+
+# Local vector database (can be recreated)
+rag_storage/
+.chroma/
