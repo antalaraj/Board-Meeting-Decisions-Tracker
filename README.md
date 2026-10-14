@@ -1,58 +1,101 @@
 # Board Meeting Decisions Tracker (AI Meeting Analyzer)
 
-The Board Meeting Decisions Tracker is an AI-powered application that analyzes board meeting minutes and automatically extracts important decisions, insights, and summaries. The system uses Natural Language Processing (NLP), Retrieval-Augmented Generation (RAG), and Google Gemini AI to provide accurate, context-aware answers strictly based on the uploaded meeting document. This application helps organizations reduce manual review effort, improve clarity, and ensure effective tracking of board-level decisions.
-
-## Problem Statement
-Manual review of meeting minutes is time-consuming, error-prone, and inefficient. Keyword-based searches fail to understand context, synonyms, and implicit decisions. There is a need for an intelligent system that can understand meeting context and deliver accurate, structured results.
+An AI-powered Streamlit application that analyzes board meeting minutes and extracts decisions, summaries, and insights. It uses Google Gemini AI and Retrieval-Augmented Generation (RAG) to answer questions based on uploaded meeting text.
 
 ## Features
-- Upload meeting minutes in .txt format
-- Ask any question related to the meeting content
-- Context-aware question answering using RAG
-- Structured bullet-point responses
-- AI-powered decision and insight extraction
-- Download results as a professionally formatted PDF
-- Simple and user-friendly Streamlit interface
+
+- Upload meeting minutes in `.txt` format
+- Ask questions about the uploaded meeting
+- Prompt mode for direct analysis
+- RAG mode backed by ChromaDB and sentence-transformer embeddings
+- Structured decision summaries
+- Download results as a PDF report
 
 ## Tech Stack
-- Frontend: Streamlit
-- Backend: Python
-- AI & NLP: Google Gemini AI, LangChain, Sentence Transformers
-- Vector Database: ChromaDB
-- PDF Generation: ReportLab
 
-## System Architecture
-User uploads meeting file → Text extraction and chunking → Embedding generation → Vector storage (ChromaDB) → Retrieval-Augmented Generation (RAG) → Gemini AI response → Structured output → PDF export
+- Python and Streamlit
+- Google Gemini API
+- ChromaDB and Sentence Transformers
+- ReportLab for PDF export
 
-## Installation and Setup
-1. Clone the repository  
-git clone https://github.com/your-username/Board-Meeting-Decisions-Tracker.git  
-cd Board-Meeting-Decisions-Tracker  
+## Run Locally
 
-2. Create and activate virtual environment  
-python -m venv .venv  
-Windows: .venv\Scripts\activate  
-Linux/macOS: source .venv/bin/activate  
+1. Clone this repository:
 
-3. Install dependencies  
-pip install -r requirements.txt  
+   ```bash
+   git clone https://github.com/antalaraj/Board-Meeting-Decisions-Tracker.git
+   cd Board-Meeting-Decisions-Tracker
+   ```
 
-4. Run the application  
-streamlit run app.py  
+2. Create and activate a virtual environment:
 
-## Applications
-Corporate board meetings, management review meetings, governance and compliance tracking, educational and institutional meetings, and project documentation analysis.
+   ```bash
+   python -m venv .venv
+   ```
+
+   Windows PowerShell:
+
+   ```powershell
+   .\.venv\Scripts\Activate.ps1
+   ```
+
+   macOS/Linux:
+
+   ```bash
+   source .venv/bin/activate
+   ```
+
+3. Install the requirements:
+
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+4. Set your Gemini API key. You can create a local file named `.streamlit/secrets.toml` (do not commit it) with:
+
+   ```toml
+   GEMINI_API_KEY = "your-gemini-api-key"
+   ```
+
+   Or set the `GEMINI_API_KEY` environment variable.
+
+5. Run the Streamlit interface:
+
+   ```bash
+   streamlit run streamlit_app.py
+   ```
+
+## Deploy on Streamlit Community Cloud
+
+1. Open [Streamlit Community Cloud](https://share.streamlit.io/) and sign in with GitHub.
+2. Select **Create app** and choose this repository.
+3. Choose branch `main`.
+4. Set **Main file path** to `streamlit_app.py`.
+5. Open **Advanced settings → Secrets** and add:
+
+   ```toml
+   GEMINI_API_KEY = "your-gemini-api-key"
+   ```
+
+6. Deploy the app. The first build may take longer because Sentence Transformers downloads an embedding model.
+7. If the app fails to start, open the app's **Manage app / Logs** view and check the first dependency or runtime error.
+
+Keep API keys out of GitHub and never commit a real `.streamlit/secrets.toml` file. The app expects the secret name `GEMINI_API_KEY`.
 
 ## Limitations
-Supports only .txt files, requires internet connectivity for AI inference, supports English language only, and does not include real-time transcription.
+
+- Meeting input currently supports `.txt` files only.
+- Gemini API access and internet connectivity are required.
+- RAG mode uses a local ChromaDB store; files stored on an ephemeral hosted filesystem may not persist across restarts or redeployments.
+- English-language meetings are the primary target.
 
 ## Future Enhancements
-Support for PDF and DOCX files, speech-to-text transcription, multilingual support, automated task reminders, analytics dashboard, and role-based access control.
 
-## 👨‍💻 Author
-Raj Antala  
-🎓 PGDM Student in AI and Data Science  
-🏫 Adani Institute of Digital Technology Management (AIDTM)  
-📍 Gandhinagar, India  
-📧 antalaraj214@gmail.com  
-🔗 www.linkedin.com/in/antalaraj
+PDF and DOCX input, speech-to-text, multilingual support, task reminders, analytics, and role-based access control.
+
+## Author
+
+**Raj Antala**  
+PGDM Student in AI and Data Science  
+Adani Institute of Digital Technology Management (AIDTM)  
+LinkedIn: [antalaraj](https://www.linkedin.com/in/antalaraj)
